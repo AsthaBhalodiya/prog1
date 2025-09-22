@@ -59,8 +59,8 @@ function vCross(a,b){ return {x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x
    Default scene data (fallbacks if fetch fails)
    ----------------------- */
 const DEFAULT_LIGHTS = [
-    {x:-0.5, y:1.5, z:-0.5, ambient:[0.1,0.1,0.1], diffuse:[1,1,1], specular:[1,1,1]},
-    {x: 1.0, y:1.5, z:-0.2, ambient:[0,0,0], diffuse:[0.6,0.6,0.6], specular:[0.6,0.6,0.6]}
+    {x:-0.5, y:1.5, z:-0.5, ambient:[1,1,1], diffuse:[1,1,1], specular:[1,1,1]},
+    // {x: 1.0, y:1.5, z:-0.2, ambient:[0,0,0], diffuse:[0.6,0.6,0.6], specular:[0.6,0.6,0.6]}
 ];
 
 const DEFAULT_BOXES = [
@@ -485,13 +485,6 @@ function buildFullScene(data) {
     const lights = (data.lights && data.lights.length) ? data.lights : DEFAULT_LIGHTS;
     scene.setLights(lights);
     scene.clearObjects();
-
-    // boxes
-    const boxes = (data.boxes && data.boxes.length) ? data.boxes : DEFAULT_BOXES;
-    for (let b of boxes) {
-        const mat = { ambient: b.ambient||[0.02,0.02,0.02], diffuse:b.diffuse||[0.7,0.2,0.2], specular:b.specular||[0.8,0.8,0.8], n:b.n||20 };
-        scene.addObject(new AABB(b.lx, b.rx, b.by, b.ty, b.fz, b.rz, mat));
-    }
 
     // ellipsoids
     const ellips = (data.ellipsoids && data.ellipsoids.length) ? data.ellipsoids : DEFAULT_ELLIPSOIDS;
