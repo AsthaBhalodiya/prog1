@@ -100,29 +100,67 @@ class Ellipsoid {
         this.radii = radii;   // {x,y,z} (nonzero)
         this.material = material;
     }
-    rayIntersect(O, D) {
-        // transform ray into ellipsoid local space: scale coordinates by 1/r
-        const invR = {x:1/this.radii.x, y:1/this.radii.y, z:1/this.radii.z};
-        const Oc = vSub(O, this.center);
-        const Oe = {x:Oc.x*invR.x, y:Oc.y*invR.y, z:Oc.z*invR.z};
-        const De = {x:D.x*invR.x, y:D.y*invR.y, z:D.z*invR.z};
-        const a = vDot(De, De);
-        const b = 2 * vDot(De, Oe);
-        const c = vDot(Oe, Oe) - 1;
-        const disc = b*b - 4*a*c;
-        if (disc < 0) return null;
-        const sqrtD = Math.sqrt(disc);
-        const t0 = (-b - sqrtD) / (2*a);
-        const t1 = (-b + sqrtD) / (2*a);
-        let t = (t0 > 1e-6) ? t0 : ((t1 > 1e-6) ? t1 : null);
-        if (t === null) return null;
-        const pLocal = vAdd(O, vScale(D, t));
-        const normalRaw = {x:(pLocal.x - this.center.x) / (this.radii.x*this.radii.x),
-                           y:(pLocal.y - this.center.y) / (this.radii.y*this.radii.y),
-                           z:(pLocal.z - this.center.z) / (this.radii.z*this.radii.z)};
-        const normal = vNorm(normalRaw);
-        return {t:t, point:pLocal, normal:normal, material:this.material};
-    }
+    rayIntersect(ray) {
+       const O = ray.origin;
+       const D = ray.direction;
+       let tmin = -Infinity;
+       let tmax = Infinity;
+       let hitNormal = { x: 0, y: 0, z: 0 };
+   
+       // For each axis, compute slab intersection
+       for (let axis of ["x", "y", "z"]) {
+           const lo = (axis === "x") ? this.lx : (axis === "y") ? this.by : this.fz;
+           const hi = (axis === "x") ? this.rx : (axis === "y") ? this.ty : this.rz;
+           const originComp = O[axis];
+           const dirComp = D[axis];
+   
+           if (Math.abs(dirComp) < 1e-8) {
+               // Ray is parallel to slabs
+               if (originComp < lo || originComp > hi) return null; // misses box
+           } else {
+               const t1 = (lo - originComp) / dirComp;
+               const t2 = (hi - originComp) / dirComp;
+               const tNear = Math.min(t1, t2);
+               const tFar = Math.max(t1, t2);
+   
+               if (tNear > tmin) {
+                   tmin = tNear;
+                   // Update normal for entering face
+                   hitNormal = { x: 0, y: 0, z: 0 };
+                   hitNormal[axis] = (t1 > t2) ? 1 : -1;
+               }
+               if (tFar < tmax) tmax = tFar;
+               if (tmin > tmax) return null; // no intersection
+               if (tmax < 0) return null; // box behind ray
+           }
+       }
+   
+       const tHit = tmin >= 0 ? tmin : tmax; // handle inside-box rays
+       // Adjust normal if using exit face
+       if (tHit === tmax && tmin < 0) {
+           hitNormal = { x: 0, y: 0, z: 0 };
+           for (let axis of ["x", "y", "z"]) {
+               const lo = (axis === "x") ? this.lx : (axis === "y") ? this.by : this.fz;
+               const hi = (axis === "x") ? this.rx : (axis === "y") ? this.ty : this.rz;
+               const originComp = O[axis];
+               const dirComp = D[axis];
+               if (Math.abs(dirComp) > 1e-8) {
+                   const t1 = (lo - originComp) / dirComp;
+                   const t2 = (hi - originComp) / dirComp;
+                   if (Math.abs(tHit - t1) < 1e-6) hitNormal[axis] = (dirComp > 0) ? -1 : 1;
+                   else if (Math.abs(tHit - t2) < 1e-6) hitNormal[axis] = (dirComp > 0) ? 1 : -1;
+               }
+           }
+       }
+   
+       const hitPoint = {
+           x: O.x + D.x * tHit,
+           y: O.y + D.y * tHit,
+           z: O.z + D.z * tHit
+       };
+   
+       return { t: tHit, point: hitPoint, normal: hitNormal };
+   }
 }
 
 // Axis-Aligned Box (in normalized scene coordinates)
