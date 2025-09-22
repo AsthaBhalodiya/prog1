@@ -5,7 +5,7 @@
 <title>Raytraced + Alt Scene</title>
 <style>
   body { background: #222; color: #eee; text-align: center; }
-  canvas { background: #fff; display: block; margin: 1em auto; }
+  canvas { background: #fff; display: block; margin: 1em auto; border:1px solid #555; }
 </style>
 </head>
 <body>
@@ -14,25 +14,22 @@
 
 <script>
 // -----------------
-// IMAGE 1 (your original code stays here)
+// IMAGE 1 (original random pixels/boxes)
 // -----------------
-
 function drawRandPixelsInInputBoxes(ctx) {
-  // Example original image 1: random boxes/pixels
+  // draw random tiny colored squares
   for (let i = 0; i < 2000; i++) {
     ctx.fillStyle = `rgb(${Math.random()*255},${Math.random()*255},${Math.random()*255})`;
     ctx.fillRect(Math.random()*ctx.canvas.width,
                  Math.random()*ctx.canvas.height,
-                 2,2);
+                 3,3);
   }
 }
 
 // -----------------
 // IMAGE 2 (new scene: triangles + ellipsoids + shading)
 // -----------------
-
 function drawInputEllipsoidsUsingArcs(ctx) {
-  // draw a few ellipsoids
   for (let i=0; i<5; i++) {
     let x = Math.random()*ctx.canvas.width;
     let y = Math.random()*ctx.canvas.height;
@@ -50,7 +47,6 @@ function drawInputEllipsoidsUsingArcs(ctx) {
 }
 
 function drawInputTrainglesUsingPaths(ctx) {
-  // draw random triangles
   for (let i=0;i<6;i++){
     ctx.beginPath();
     ctx.moveTo(Math.random()*ctx.canvas.width,Math.random()*ctx.canvas.height);
@@ -67,7 +63,6 @@ function drawInputTrainglesUsingPaths(ctx) {
 }
 
 function drawRandPixelsInInputTriangles(ctx){
-  // scatter some pixels
   for (let i=0;i<500;i++){
     ctx.fillStyle=`rgba(0,0,0,${Math.random()})`;
     ctx.fillRect(Math.random()*ctx.canvas.width,Math.random()*ctx.canvas.height,1,1);
@@ -75,23 +70,22 @@ function drawRandPixelsInInputTriangles(ctx){
 }
 
 function drawSecondImage() {
-  var canvas = document.getElementById("viewport"); 
-  var context = canvas.getContext("2d");
+  const canvas = document.getElementById("viewport"); 
+  const context = canvas.getContext("2d");
   // clear previous image
   context.clearRect(0, 0, canvas.width, canvas.height);
 
-  // new scene
   drawInputEllipsoidsUsingArcs(context);
   drawInputTrainglesUsingPaths(context);
   drawRandPixelsInInputTriangles(context);
 }
 
 // -----------------
-// main
+// main on load
 // -----------------
 function main() {
-  var canvas = document.getElementById("viewport"); 
-  var context = canvas.getContext("2d");
+  const canvas = document.getElementById("viewport"); 
+  const context = canvas.getContext("2d");
   drawRandPixelsInInputBoxes(context); // original image 1
 }
 main();
