@@ -692,14 +692,7 @@ function newDesignRenderer(context) {
                 shininess:30,
                 reflective: 0.0
             }},
-            // triangle in 3D space (single triangle)
-            {type:'triangle', v0:{x:0.5,y:0.65,z:0.8}, v1:{x:0.2,y:0.9,z:0.6}, v2:{x:0.8,y:0.9,z:0.6}, material:{
-                ambient:[0.02,0.02,0.05],
-                diffuse:[0.1,0.2,0.7],
-                specular:[0.9,0.9,1.0],
-                shininess:50,
-                reflective:0.0
-            }}
+            // NOTE: the triangle used earlier is now replaced by a cone mesh generated below
         ]
     };
 
@@ -714,6 +707,50 @@ function newDesignRenderer(context) {
         // R = I - 2*dot(I,N)*N
         let d = 2*vdot(I,N);
         return vsub(I, vmul(N,d));
+    }
+    function vcross(a,b){ return {x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x*b.y - a.y*b.x}; }
+
+    // generate cone as triangle mesh (apex, baseCenter, height inferred, radius, segments)
+    function generateConeMesh(apex, baseCenter, radius, segments, material) {
+        const tris = [];
+        // axis from apex to base center
+        const axis = vnorm(vsub(baseCenter, apex));
+        // create orthonormal basis u,v in plane of base
+        let arbitrary = Math.abs(axis.x) < 0.9 ? {x:1,y:0,z:0} : {x:0,y:1,z:0};
+        let u = vnorm(vcross(axis, arbitrary));
+        let v = vcross(u, axis); // already orthogonal
+        // compute base ring points
+        const ring = [];
+        for (let i = 0; i < segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            const p = vadd(baseCenter, vadd( vmul(u, Math.cos(theta)*radius ), vmul(v, Math.sin(theta)*radius) ));
+            ring.push(p);
+        }
+        // lateral surface: triangles (apex, ring[i], ring[i+1])
+        for (let i = 0; i < segments; i++) {
+            const p1 = ring[i];
+            const p2 = ring[(i+1)%segments];
+            tris.push({
+                type:'triangle',
+                v0: {x: apex.x, y: apex.y, z: apex.z},
+                v1: {x: p1.x,  y: p1.y,  z: p1.z},
+                v2: {x: p2.x,  y: p2.y,  z: p2.z},
+                material: material
+            });
+        }
+        // base cap: fan triangles (baseCenter, ring[i+1], ring[i])
+        for (let i = 0; i < segments; i++) {
+            const p1 = ring[i];
+            const p2 = ring[(i+1)%segments];
+            tris.push({
+                type:'triangle',
+                v0: {x: baseCenter.x, y: baseCenter.y, z: baseCenter.z},
+                v1: {x: p2.x, y: p2.y, z: p2.z},
+                v2: {x: p1.x, y: p1.y, z: p1.z},
+                material: material
+            });
+        }
+        return tris;
     }
 
     // intersection routines
@@ -792,6 +829,26 @@ function newDesignRenderer(context) {
         const normal = vnorm({x: e1.y*e2.z - e1.z*e2.y, y: e1.z*e2.x - e1.x*e2.z, z: e1.x*e2.y - e1.y*e2.x});
         return {t:t, point:point, normal:normal, material:tri.material};
     }
+
+    // Now: generate a cone mesh and insert into scene.objects (replacing the triangle)
+    (function insertCone() {
+        // define apex & base center using previous triangle-ish positions as inspiration
+        const apex = {x:0.5, y:0.65, z:0.8};
+        // choose base center slightly lower (larger y) and slightly toward camera (smaller z)
+        const baseCenter = {x:0.5, y:0.95, z:0.6};
+        const coneRadius = 0.25;
+        const segments = 28;
+        const coneMaterial = {
+            ambient:[0.02,0.02,0.05],
+            diffuse:[0.1,0.2,0.7],
+            specular:[0.9,0.9,1.0],
+            shininess:50,
+            reflective:0.0
+        };
+        const coneTris = generateConeMesh(apex, baseCenter, coneRadius, segments, coneMaterial);
+        // append cone triangles to scene.objects
+        for (let t of coneTris) scene.objects.push(t);
+    })();
 
     // cast a ray and return color (RGB 0..1)
     function castRay(orig, dir, depth) {
@@ -931,4 +988,3 @@ function newDesignRenderer(context) {
        * Make the ray tracer render faster by downsampling and applying a small bilateral/box blur.
        * Add GUI controls for toggling lights, adjusting shininess, or enabling reflections.
 */
-
